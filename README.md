@@ -83,7 +83,7 @@ You can interact with the app using `curl` commands. Here are specific examples 
 To run unit tests within the container, you can override the default command with the pytest command. Assuming your tests are in `test_iss_tracker.py`, run:
 
 ```bash
-docker run charan427/iss-tracker:1.0 pytest test_iss_tracker.py
+docker run charan427/iss-tracker pytest test_iss_tracker.py
 ```
 
 ## Software Diagram

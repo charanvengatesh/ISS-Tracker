@@ -1,3 +1,8 @@
+from iss_tracker import getLLA
+from datetime import datetime
+from astropy import coordinates
+from astropy import units
+import time
 from iss_tracker import *
 from datetime import datetime, timedelta
 
@@ -23,3 +28,80 @@ def test_convert_epoch_to_datetime():
     assert converted_datetime == expected_datetime
 
 
+def test_getLLA():
+    # Test the getLLA function with known values
+    sv = {
+        'X': {'#text': '407.811'},
+        'Y': {'#text': '-4867.064'},
+        'Z': {'#text': '4989.635'},
+        'EPOCH': '2024-067T08:28:00.000Z'
+    }
+    expected_result = (45.7965, -11.323, 615.008)
+    result = getLLA(sv)
+    assert abs(result[0] - expected_result[0]) < 0.001
+    assert abs(result[1] - expected_result[1]) < 0.001
+    assert abs(result[2] - expected_result[2]) < 0.001
+
+
+def test_getLLA_negative_coordinates():
+    # Test the getLLA function with negative coordinates
+    sv = {
+        'X': {'#text': '-407.811'},
+        'Y': {'#text': '4867.064'},
+        'Z': {'#text': '-4989.635'},
+        'EPOCH': '2024-067T08:28:00.000Z'
+    }
+    expected_result = (-45.796, 168.676, 615.008)
+    result = getLLA(sv)
+    assert abs(result[0] - expected_result[0]) < 0.001
+    assert abs(result[1] - expected_result[1]) < 0.001
+    assert abs(result[2] - expected_result[2]) < 0.001
+
+
+def test_getLLA_different_units():
+    # Test the getLLA function with different units
+    sv = {
+        'X': {'#text': '407811.0'},
+        'Y': {'#text': '-4867064.0'},
+        'Z': {'#text': '4989635.0'},
+        'EPOCH': '2024-067T08:28:00.000Z'
+    }
+    expected_result = (45.6212, -11.323, 6975830.0846)
+    result = getLLA(sv)
+
+    assert abs(result[0] - expected_result[0]) < 0.001
+    assert abs(result[1] - expected_result[1]) < 0.001
+    assert abs(result[2] - expected_result[2]) < 0.001
+
+
+def test_getLLA_different_epoch():
+    # Test the getLLA function with different epoch
+    sv = {
+        'X': {'#text': '407.811'},
+        'Y': {'#text': '-4867.064'},
+        'Z': {'#text': '4989.635'},
+        'EPOCH': '2024-068T08:28:00.000Z'
+    }
+    expected_result = (45.7965, -12.3090, 615.008)
+    result = getLLA(sv)
+    assert abs(result[0] - expected_result[0]) < 0.001
+    assert abs(result[1] - expected_result[1]) < 0.001
+    assert abs(result[2] - expected_result[2]) < 0.001
+
+
+def test_getGeoLoc():
+    # Test the getGeoLoc function with a valid latitude and longitude
+    lat = 29.979
+    lon = -95.336
+    expected_result = "Houston"
+    result = getGeoLoc(lat, lon)
+    assert result["city"] == expected_result
+
+
+def test_getGeoLoc_no_location():
+    # Test the getGeoLoc function with invalid latitude and longitude
+    lat = 0
+    lon = 0
+    expected_result = "No location data"
+    result = getGeoLoc(lat, lon)
+    assert result == expected_result

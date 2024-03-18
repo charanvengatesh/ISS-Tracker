@@ -6,7 +6,7 @@ services:
         build:
             context: ./
             dockerfile: ./Dockerfile
-        image: charan427/iss-tracker:1.0
+        image: iss-tracker
         container_name: iss-tracker
         ports:
             - "3000:3000"

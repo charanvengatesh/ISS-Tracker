@@ -1,8 +1,9 @@
 from flask import Flask, jsonify, request
-from datetime import datetime
+from datetime import datetime, timezone
 from iss_tracker import *
 
 app = Flask(__name__)
+
 
 @app.route('/epochs', methods=['GET'])
 def get_all_epochs():
@@ -49,17 +50,50 @@ def get_epoch_speed(epoch):
     return "Epoch not found", 404
 
 
+@app.route('/epochs/<epoch>/location', methods=['GET'])
+def get_epoch_location(epoch):
+    """
+    Calculates and returns the instantaneous speed for a specific epoch.
+    """
+    state_vectors = get_epochs()
+    for sv in state_vectors:
+        if sv['EPOCH'] == epoch:
+            location = getLLA(sv)
+            geoloc = getGeoLoc(location[0], location[1])
+            loc = {
+                "latitude": location[0],
+                "longitude": location[1],
+                "altitude": {"value": location[2], "units": "km"},
+                "geo": geoloc
+            }
+            return jsonify(loc)
+    return "Epoch not found", 404
+
+
 @app.route('/now', methods=['GET'])
 def get_now():
     """
     Returns state vectors and instantaneous speed for the Epoch closest to the current time.
     """
     state_vectors = get_epochs()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     closest_epoch = find_closest_epoch(state_vectors, now)
+    location = getLLA(closest_epoch)
+    geoloc = getGeoLoc(location[0], location[1])
     speed = calculate_speed(float(closest_epoch['X_DOT']['#text']), float(
         closest_epoch['Y_DOT']['#text']), float(closest_epoch['Z_DOT']['#text']))
-    return jsonify({"closest_epoch": closest_epoch, "speed": speed})
+    data = {
+        "closest_epoch": closest_epoch['EPOCH'],
+        "location": {
+            "latitude": location[0],
+            "longitude": location[1],
+            "altitude": {"value": location[2], "units": "km"},
+            "geo": geoloc
+        },
+        "speed": {"value": speed, "units": "km/s"}
+    }
+    return jsonify(data)
+
 
 @app.route('/metadata', methods=['GET'])
 def get_metadata():
@@ -70,6 +104,7 @@ def get_metadata():
     metadata = data['ndm']['oem']['body']['segment']['metadata']
     return jsonify(metadata)
 
+
 @app.route('/comment', methods=['GET'])
 def get_comments():
     """
@@ -79,6 +114,7 @@ def get_comments():
     comments = data['ndm']['oem']['body']['segment']['data']['COMMENT']
     return jsonify(comments)
 
+
 @app.route('/header', methods=['GET'])
 def get_header():
     """
@@ -87,6 +123,7 @@ def get_header():
     data = fetch_iss_data()
     header = data['ndm']['oem']['header']
     return jsonify(header)
+
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=int("3000"))

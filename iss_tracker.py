@@ -1,12 +1,14 @@
-import math
+from math import sqrt
 import requests
 import xmltodict
 from datetime import datetime, timedelta
-import time
-from math import *
 import logging
+import time
+from astropy import coordinates
+from astropy import units
 from typing import List, Dict, Optional
 from geopy.geocoders import Nominatim
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -45,7 +47,7 @@ def calculate_speed(x_dot: float, y_dot: float, z_dot: float) -> float:
     Returns:
         float: The calculated speed of the ISS.
     """
-    return math.sqrt(x_dot**2 + y_dot**2 + z_dot**2)
+    return sqrt(x_dot**2 + y_dot**2 + z_dot**2)
 
 
 def find_closest_epoch(state_vectors: List[Dict], target_datetime: datetime) -> Dict:
@@ -63,6 +65,8 @@ def find_closest_epoch(state_vectors: List[Dict], target_datetime: datetime) -> 
     closest_sv = None
     for sv in state_vectors:
         epoch_datetime = convert_epoch_to_datetime(sv['EPOCH'])
+        # Convert target_datetime to offset-aware datetime
+        target_datetime = target_datetime.replace(tzinfo=epoch_datetime.tzinfo)
         if closest_time is None or abs(epoch_datetime - target_datetime) < abs(closest_time - target_datetime):
             closest_time = epoch_datetime
             closest_sv = sv
@@ -82,7 +86,7 @@ def convert_epoch_to_datetime(epoch: str) -> datetime:
     year_str, rest = epoch.split('-')
     year = int(year_str)
     doy_str, time_str = rest.split('T')
-    doy = int(doy_str)  
+    doy = int(doy_str)
 
     time_parts = time_str.replace('Z', '').split(':')
     hours, minutes = int(time_parts[0]), int(time_parts[1])
@@ -95,14 +99,60 @@ def convert_epoch_to_datetime(epoch: str) -> datetime:
 
 
 def get_epochs():
+    """
+    Fetches the state vectors of the International Space Station (ISS).
+
+    Returns:
+        list: A list of state vectors representing the position and velocity of the ISS.
+    """
     state_vectors = fetch_iss_data()
     return state_vectors['ndm']['oem']['body']['segment']['data']['stateVector']
 
+
+def getLLA(sv):
+    """
+    Convert satellite coordinates from Cartesian to latitude, longitude, and altitude.
+
+    Parameters:
+    - sv (dict): A dictionary containing satellite coordinates in Cartesian format.
+
+    Returns:
+    - tuple: A tuple containing latitude, longitude, and altitude values.
+    """
+    x = float(sv['X']['#text'])
+    y = float(sv['Y']['#text'])
+    z = float(sv['Z']['#text'])
+
+    # assumes epoch is in format '2024-067T08:28:00.000Z'
+    this_epoch = time.strftime(
+        '%Y-%m-%d %H:%m:%S', time.strptime(sv['EPOCH'][:-5], '%Y-%jT%H:%M:%S'))
+
+    cartrep = coordinates.CartesianRepresentation([x, y, z], unit=units.km)
+    gcrs = coordinates.GCRS(cartrep, obstime=this_epoch)
+    itrs = gcrs.transform_to(coordinates.ITRS(obstime=this_epoch))
+    loc = coordinates.EarthLocation(*itrs.cartesian.xyz)
+
+    return loc.lat.value, loc.lon.value, loc.height.value
+
+
+def getGeoLoc(lat, lon):
+    """
+    Retrieves the address information for a given latitude and longitude.
+
+    Parameters:
+        lat (float): The latitude coordinate.
+        lon (float): The longitude coordinate.
+
+    Returns:
+        str: The address information as a string, or "No location data" if no location is found.
+    """
+    geolocator = Nominatim(user_agent="iss-tracker")
+    location = geolocator.reverse(f"{lat}, {lon}", language='en', zoom=15)
+    return location.raw["address"] if location else "No location data"
+
+
 def main():
-    """
-    Main function to execute the ISS tracking script.
-    """
-    
+
     pass
 
 
