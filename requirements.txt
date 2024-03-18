@@ -3,3 +3,4 @@ requests==2.25.1
 xmltodict==0.12.0
 astropy
 geopy
+pytest

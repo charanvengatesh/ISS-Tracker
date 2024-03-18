@@ -1,10 +1,10 @@
-from iss_tracker import getLLA
-from datetime import datetime
-from astropy import coordinates
-from astropy import units
-import time
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 from iss_tracker import *
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def test_calculate_speed():
